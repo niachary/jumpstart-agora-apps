@@ -5,18 +5,18 @@ type: application
 version: 0.1.1
 appVersion: "1.16.0"
 dependencies:
-  #- name: opcsimulator
-  #  version: 0.1.0
-  #  repository: "file://../opc-simulator"
+  - name: opcsimulator
+    version: 0.1.0
+    repository: "file://../opc-simulator"
   - name: ovms
     version: 0.1.0
     repository: "file://../ovms"
   - name: influxdb
     version: 0.1.0
     repository: "file://../influxdb"
-  #- name: mqtt
-  #  version: 0.1.0
-  #  repository: "file://../mqtt"
+  - name: mqtt
+    version: 0.1.0
+    repository: "file://../mqtt"
   - name: rtsp-simulator  
     version: 0.1.0
     repository: "file://../rtsp-simulator"
