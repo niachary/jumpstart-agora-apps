@@ -22,6 +22,9 @@ class YOLOv8OVMS:
         self.verbose=verbose
         self.frame_number =0
         self.skip_rate=skip_rate
+        self.total_inference_time = 0
+        self.total_frames = 0
+        self.start_time = time.time()
 
         self.cap = cv2.VideoCapture(rtsp_url)
         self.grpc_client = make_grpc_client(ovms_url)
@@ -52,7 +55,7 @@ class YOLOv8OVMS:
         image_data = np.expand_dims(image_data, axis=0).astype(np.float32)
         return image_data
 
-    def postprocess(self, input_image, output):
+    def postprocess(self, input_image, output, inference_time):
         if(self.verbose):
             print("Postprocessing the output...")
 
@@ -119,7 +122,7 @@ class YOLOv8OVMS:
             class_id = class_ids[i]
 
             # Draw the detection on the input image
-            self.draw_detections(input_image, box, score, class_id)
+            self.draw_detections(input_image, box, score, class_id, inference_time)
             table_data.append([i, box, score, self.class_names[class_id]])
 
         # Print the table
@@ -129,7 +132,7 @@ class YOLOv8OVMS:
         # Return the modified input image
         return input_image
 
-    def draw_detections(self, img, box, score, class_id):
+    def draw_detections(self, img, box, score, class_id, inference_time):
         # Extract the coordinates of the bounding box
         x1, y1, w, h = box
 
@@ -155,6 +158,8 @@ class YOLOv8OVMS:
          # Draw the label text on the image
         cv2.putText(img, label, (label_x, label_y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 0), 1, cv2.LINE_AA)
 
+        cv2.putText(img, f"inference time: {inference_time} seconds", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+
     def run(self):
         if(self.verbose):
             print("Running detection...")
@@ -167,8 +172,16 @@ class YOLOv8OVMS:
         
         image_data = self.preprocess()
 
+        start_time_for_predict = time.time()
         outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
-        frame = self.postprocess(self.cap.read()[1], outputs)
+        end_time_for_predict = time.time()
+        inference_time = end_time_for_predict - start_time_for_predict
+        self.total_inference_time += inference_time
+        self.total_frames += 1
+
+        print(f"Inference time: {inference_time} seconds")
+
+        frame = self.postprocess(self.cap.read()[1], outputs, inference_time)
 
         return frame
 
@@ -177,8 +190,19 @@ class YOLOv8OVMS:
         if self.verbose:
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             print(f"{timestamp} - {message}")
+
+    def print_average_inference_time(self):
+        average_inference_time = self.total_inference_time / self.total_frames
+        print(f"Average inference time: {average_inference_time} seconds")
+    
+    def print_fps(self):
+        total_time = time.time() - self.start_time
+        fps = self.total_frames / total_time
+        print(f"FPS: {fps}")
             
     def __del__(self):
+        self.print_average_inference_time(self)
+
         print("Releasing resources...")
         self.cap.release()
         cv2.destroyAllWindows()
