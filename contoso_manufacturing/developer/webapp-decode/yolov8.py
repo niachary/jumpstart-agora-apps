@@ -160,6 +160,11 @@ class YOLOv8OVMS:
 
         cv2.putText(img, f"inference time: {inference_time} seconds", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
 
+        cv2.putText(img, f"total frames processed: {self.total_frames}", (70, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+
+        fps = self.get_fps()
+        cv2.putText(img, f"fps: {fps}", (80, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+
     def run(self):
         if(self.verbose):
             print("Running detection...")
@@ -195,10 +200,11 @@ class YOLOv8OVMS:
         average_inference_time = self.total_inference_time / self.total_frames
         print(f"Average inference time: {average_inference_time} seconds")
     
-    def print_fps(self):
+    def get_fps(self):
         total_time = time.time() - self.start_time
         fps = self.total_frames / total_time
         print(f"FPS: {fps}")
+        return fps
             
     def __del__(self):
         self.print_average_inference_time(self)
