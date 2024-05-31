@@ -158,12 +158,15 @@ class YOLOv8OVMS:
          # Draw the label text on the image
         cv2.putText(img, label, (label_x, label_y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 0), 1, cv2.LINE_AA)
 
-        cv2.putText(img, f"inference time: {inference_time} seconds", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+        #cv2.putText(img, f"inference time: {inference_time} seconds", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
 
-        cv2.putText(img, f"total frames processed: {self.total_frames}", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+        #cv2.putText(img, f"total frames processed: {self.total_frames}", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
 
-        fps = self.get_fps()
-        cv2.putText(img, f"fps: {fps}", (200, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+        print(f"Total frames processed: {self.total_frames:.03f}")
+        self.print_average_inference_time()
+        self.get_fps()
+
+        #cv2.putText(img, f"fps: {fps}", (200, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
 
     def run(self):
         if(self.verbose):
@@ -184,8 +187,6 @@ class YOLOv8OVMS:
         self.total_inference_time += inference_time
         self.total_frames += 1
 
-        print(f"Inference time: {inference_time} seconds")
-
         frame = self.postprocess(self.cap.read()[1], outputs, inference_time)
 
         return frame
@@ -198,17 +199,15 @@ class YOLOv8OVMS:
 
     def print_average_inference_time(self):
         average_inference_time = self.total_inference_time / self.total_frames
-        print(f"Average inference time: {average_inference_time} seconds")
+        print(f"Average inference time: {average_inference_time:.03f} secs")
     
     def get_fps(self):
         total_time = time.time() - self.start_time
         fps = self.total_frames / total_time
-        print(f"FPS: {fps}")
+        print(f"FPS: {fps:.03f}")
         return fps
             
     def __del__(self):
-        self.print_average_inference_time(self)
-
         print("Releasing resources...")
         self.cap.release()
         cv2.destroyAllWindows()
