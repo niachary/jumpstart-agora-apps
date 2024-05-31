@@ -160,10 +160,10 @@ class YOLOv8OVMS:
 
         cv2.putText(img, f"inference time: {inference_time} seconds", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
 
-        cv2.putText(img, f"total frames processed: {self.total_frames}", (70, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+        cv2.putText(img, f"total frames processed: {self.total_frames}", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
 
         fps = self.get_fps()
-        cv2.putText(img, f"fps: {fps}", (80, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+        cv2.putText(img, f"fps: {fps}", (200, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
 
     def run(self):
         if(self.verbose):
