@@ -202,8 +202,7 @@ class YOLOv8OVMS:
         print(f"Average inference time: {average_inference_time:.03f} secs")
     
     def get_fps(self):
-        total_time = time.time() - self.start_time
-        fps = self.total_frames / total_time
+        fps = self.total_frames / self.total_inference_time
         print(f"FPS: {fps:.03f}")
         return fps
             
