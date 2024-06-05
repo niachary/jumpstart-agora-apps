@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: benchmark-app-deployment
+  namespace: contoso-motors
+  labels:
+    app: benchmarkapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: benchmarkapp
+  template:
+    metadata:
+      labels:
+        app: benchmarkapp
+    spec:
+      containers:
+      - name: benchmarkapp
+        image: mastheaddevacr.azurecr.io/benchmarkapp:240604

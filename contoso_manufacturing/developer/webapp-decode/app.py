@@ -23,7 +23,7 @@ def reload_config():
         dict: The reloaded configuration file.
     """
     print("Reloading configuration...")
-    with open('./config/config_file.json') as config_file:
+    with open('config.json') as config_file:
         return json.load(config_file)
 
 def init_yolo_detector():
