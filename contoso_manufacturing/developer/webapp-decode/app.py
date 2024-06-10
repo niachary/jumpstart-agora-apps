@@ -49,6 +49,30 @@ def init_yolo_detector():
         skip_rate=10
     )
 
+def init_yolo_tiny_detector():
+    """
+    Initializes and returns a YOLOv4-tiny object for object detection.
+
+    Returns:
+        YOLOv4-tiny-OVMS: The initialized YOLOv4-tiny-OVMS object.
+    """
+    model_config = config["yolov4-tiny"]
+    color_palette = np.random.uniform(0, 255, size=(len(model_config['class_names']), 3))
+    return YOLOv8OVMS(
+        rtsp_url=model_config['rtsp_url'],
+        class_names=model_config['class_names'],
+        input_shape=model_config['input_shape'],
+        color_palette=color_palette,
+        confidence_thres=model_config['conf_thres'],
+        iou_thres=model_config['iou_thres'],
+        model_name="yolov4-tiny", 
+        ovms_url=ovms_url, 
+        save_img_loc=False,
+        verbose=False,
+        skip_rate=10
+    )
+
+
 def init_yolo_safety_detector():
     """
     Initializes and returns a YOLOv8OVMS object for safety detection.
@@ -169,7 +193,7 @@ def gen_frames(video_name):
         config = reload_config()
 
         if video_name == "yolov8n":
-            latest_choice_detector = init_yolo_detector()
+            latest_choice_detector = init_yolo_tiny_detector()
         elif video_name == "safety-yolo8":
             latest_choice_detector = init_yolo_safety_detector()
         elif video_name == "welding":

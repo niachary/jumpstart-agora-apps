@@ -169,6 +169,18 @@ To deploy the solution, follow these steps:
                 }
             ]
         },
+        "yolov4-tiny": {
+            "model_version_status": [
+                {
+                    "version": "1",
+                    "state": "AVAILABLE",
+                    "status": {
+                        "error_code": "OK",
+                        "error_message": "OK"
+                    }
+                }
+            ]
+        },
         "yolov8-pose": {
             "model_version_status": [
                 {

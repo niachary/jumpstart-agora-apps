@@ -9,6 +9,13 @@
          },
          {
             "config": {
+                "name": "yolov4-tiny",
+                "base_path": "/models/yolov4-tiny",
+                "batch_size": "auto"
+            }
+         },
+         {
+            "config": {
                 "name": "human-pose-estimation",
                 "base_path": "/models/human-pose-estimation",
                 "batch_size": "auto"
