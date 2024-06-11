@@ -181,7 +181,7 @@ class YOLOv8OVMS:
         image_data = self.preprocess()
 
         start_time_for_predict = time.time()
-        outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
+        outputs = self.grpc_client.predict({"image_input": image_data}, self.model_name)
         end_time_for_predict = time.time()
         inference_time = end_time_for_predict - start_time_for_predict
         self.total_inference_time += inference_time
