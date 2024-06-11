@@ -33,6 +33,7 @@ def init_yolo_detector():
     Returns:
         YOLOv8OVMS: The initialized YOLOv8OVMS object.
     """
+    print("test: init yolov8n detector...")
     model_config = config["yolov8n"]
     color_palette = np.random.uniform(0, 255, size=(len(model_config['class_names']), 3))
     return YOLOv8OVMS(
@@ -56,6 +57,7 @@ def init_yolo_tiny_detector():
     Returns:
         YOLOv4-tiny-OVMS: The initialized YOLOv4-tiny-OVMS object.
     """
+    print("test: init yolo tiny detector...")
     model_config = config["yolov4-tiny"]
     color_palette = np.random.uniform(0, 255, size=(len(model_config['class_names']), 3))
     return YOLOv8OVMS(
@@ -83,6 +85,7 @@ def init_yolo_safety_detector():
     Raises:
         KeyError: If the required configuration values are missing.
     """
+    print("test: init yolo safety detector...")
     model_config = config["safety-yolo8"]
     color_palette = np.random.uniform(0, 255, size=(len(model_config['class_names']), 3))
     return YOLOv8OVMS(
@@ -106,6 +109,7 @@ def init_welding_detector():
     Returns:
         WeldPorosity: An instance of the WeldPorosity class representing the welding detector.
     """
+    print("test: init welding detector...")
     model_config = config["weld-porosity-detection"]
     return WeldPorosity(
         rtsp_url=model_config['rtsp_url'],
@@ -126,6 +130,7 @@ def init_pose_estimator():
     Returns:
         PoseEstimator: The initialized pose estimator object.
     """
+    print("test: init pose estimator detector...")
     model_config = config["human-pose-estimation"]
     return PoseEstimator(
         rtsp_url=model_config['rtsp_url'],
@@ -147,6 +152,7 @@ def init_bolt_detector():
     Returns:
         WeldPorosity: An instance of the WeldPorosity class representing the welding detector.
     """
+    print("test: init bolt detector...")
     model_config = config["bolt-detection"]
     return BoltDetection(
         rtsp_url=model_config['rtsp_url'],
@@ -178,12 +184,15 @@ def gen_frames(video_name):
     Returns:
         None
     """
+    print("test: in gen frames...")
     global latest_choice_detector  
 
     # Add a check in case of failed intit model
     if 'latest_choice_detector' not in locals() and 'latest_choice_detector' not in globals():
         latest_choice_detector = None
 
+    print(f"Video name: {video_name}")
+    print(f"Latest choice detector: {latest_choice_detector}")
     # Check if the video name is different from the current model name
     if(latest_choice_detector is None or latest_choice_detector.model_name != video_name):
         # Call the destructor first
@@ -218,6 +227,8 @@ def video_feed():
         Response: The response object containing the video frames.
     """
     video_name = request.args.get('video')
+    print(f"Video name in video feed: {video_name}")
+    
     if video_name is None:
         return Response('Video name parameter is missing', status=400)
 
