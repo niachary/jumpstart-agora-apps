@@ -2,7 +2,7 @@ apiVersion: v2
 name: contoso-motors
 description: A Helm chart to deploy components for the Contoso Motors scenario
 type: application
-version: 0.1.7
+version: 0.1.8
 appVersion: "1.16.1"
 dependencies:
   - name: ovms
@@ -15,5 +15,5 @@ dependencies:
     version: 0.1.0
     repository: "file://../rtsp-simulator"
   - name: flask-app
-    version: 0.1.7
+    version: 0.1.8
     repository: "file://../flask-app"

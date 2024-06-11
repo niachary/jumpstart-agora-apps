@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: contosowebapp
-        image: mastheaddevacr.azurecr.io/contosowebapp:61120231
+        image: mastheaddevacr.azurecr.io/contosowebapp:61120232
         imagePullPolicy: Never
         ports:
         - containerPort: 5001
