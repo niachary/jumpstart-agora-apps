@@ -60,7 +60,14 @@ class YOLOv8OVMS:
             print("Postprocessing the output...")
 
         # Transpose and squeeze the output to match the expected shape
-        outputs = np.transpose(np.squeeze(output[0]))
+        #outputs = np.transpose(np.squeeze(output[0]))
+        for key in output.keys():
+            print(key)
+        
+        print("output shape: ", output[0].shape)
+        
+        outputs = np.squeeze(output[0])
+        print("output shape: ", output[0].shape)
 
         # Get the number of rows in the outputs array
         rows = outputs.shape[0]
@@ -182,6 +189,11 @@ class YOLOv8OVMS:
 
         start_time_for_predict = time.time()
         outputs = self.grpc_client.predict({"image_input": image_data}, self.model_name)
+        print("outputs: ", outputs)
+
+        # Print the type of output
+        print("Type of output: ", type(outputs))
+
         end_time_for_predict = time.time()
         inference_time = end_time_for_predict - start_time_for_predict
         self.total_inference_time += inference_time
