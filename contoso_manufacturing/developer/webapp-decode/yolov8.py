@@ -61,11 +61,6 @@ class YOLOv8OVMS:
 
         # Transpose and squeeze the output to match the expected shape
         #outputs = np.transpose(np.squeeze(output[0]))
-        for key in output.keys():
-            print(key)
-        
-        print("output shape: ", output[0].shape)
-        
         outputs = np.squeeze(output[0])
         print("output shape: ", output[0].shape)
 
@@ -189,7 +184,7 @@ class YOLOv8OVMS:
 
         start_time_for_predict = time.time()
         outputs = self.grpc_client.predict({"image_input": image_data}, self.model_name)
-        print("outputs: ", outputs)
+        #print("outputs: ", outputs)
 
         # Print the type of output
         print("Type of output: ", type(outputs))
@@ -199,9 +194,13 @@ class YOLOv8OVMS:
         self.total_inference_time += inference_time
         self.total_frames += 1
 
+        print(f"Total frames processed: {self.total_frames:.03f}")
+        self.print_average_inference_time()
+        self.get_fps()
+
         frame = self.postprocess(self.cap.read()[1], outputs, inference_time)
 
-        return frame
+        return self.cap.read()[1]
 
     def log(self, message):
         """Logs a message with a timestamp if verbose is true."""
