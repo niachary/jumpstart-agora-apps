@@ -51,7 +51,7 @@ class YOLOv8OVMS:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = cv2.resize(img, (self.input_width, self.input_height))
         image_data = np.array(img) / 255.0
-        image_data = np.transpose(image_data, (2, 0, 1))
+        #image_data = np.transpose(image_data, (2, 0, 1))
         image_data = np.expand_dims(image_data, axis=0).astype(np.float32)
         return image_data
 
