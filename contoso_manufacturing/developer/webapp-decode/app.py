@@ -7,6 +7,7 @@ from yolov8 import YOLOv8OVMS
 from welding import WeldPorosity
 from pose_estimator import PoseEstimator
 from bolt_detection import BoltDetection
+from yolov4_tiny import YOLOv4tinyOVMS
 
 app = Flask(__name__)
 
@@ -50,7 +51,7 @@ def init_yolo_detector():
         skip_rate=10
     )
 
-def init_yolo_tiny_detector():
+def init_yolov4_tiny_detector():
     """
     Initializes and returns a YOLOv4-tiny object for object detection.
 
@@ -60,7 +61,7 @@ def init_yolo_tiny_detector():
     print("test: init yolo tiny detector...")
     model_config = config["yolov4-tiny"]
     color_palette = np.random.uniform(0, 255, size=(len(model_config['class_names']), 3))
-    return YOLOv8OVMS(
+    return YOLOv4tinyOVMS(
         rtsp_url=model_config['rtsp_url'],
         class_names=model_config['class_names'],
         input_shape=model_config['input_shape'],
@@ -202,7 +203,7 @@ def gen_frames(video_name):
         config = reload_config()
 
         if video_name == "yolov8n":
-            latest_choice_detector = init_yolo_tiny_detector()
+            latest_choice_detector = init_yolov4_tiny_detector()
         elif video_name == "safety-yolo8":
             latest_choice_detector = init_yolo_safety_detector()
         elif video_name == "welding":
