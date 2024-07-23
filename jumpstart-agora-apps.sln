@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.002.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "contoso_supermarket", "contoso_supermarket", "{C473389F-6008-46D1-AD23-FC44899D633A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "developer", "developer", "{0119D494-9E00-490E-81F8-8A11A3F4672D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "queue_monitoring_backend", "queue_monitoring_backend", "{8600CB2B-DA56-4D63-928B-C9F95F7F4AE2}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contoso.Backend.Data", "contoso_supermarket\developer\queue_monitoring_backend\src\Contoso.Backend.Data.csproj", "{B45E03EE-C4A3-450D-937E-2AC34E57E83F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B45E03EE-C4A3-450D-937E-2AC34E57E83F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B45E03EE-C4A3-450D-937E-2AC34E57E83F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B45E03EE-C4A3-450D-937E-2AC34E57E83F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B45E03EE-C4A3-450D-937E-2AC34E57E83F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{0119D494-9E00-490E-81F8-8A11A3F4672D} = {C473389F-6008-46D1-AD23-FC44899D633A}
+		{8600CB2B-DA56-4D63-928B-C9F95F7F4AE2} = {0119D494-9E00-490E-81F8-8A11A3F4672D}
+		{B45E03EE-C4A3-450D-937E-2AC34E57E83F} = {8600CB2B-DA56-4D63-928B-C9F95F7F4AE2}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {BC100249-8B75-4CEB-8226-C7DBF288DF58}
+	EndGlobalSection
+EndGlobal

@@ -213,6 +213,7 @@ def gen_frames(video_name):
     while video_name != "":
         processed_frame = latest_choice_detector.run()
         if processed_frame is not None:
+            #captures the frame
             ret, buffer = cv2.imencode('.jpg', processed_frame)
             frame = buffer.tobytes()
             yield (b'--frame\r\n'

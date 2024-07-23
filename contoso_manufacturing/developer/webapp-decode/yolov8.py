@@ -184,10 +184,6 @@ class YOLOv8OVMS:
 
         start_time_for_predict = time.time()
         outputs = self.grpc_client.predict({"image_input": image_data}, self.model_name)
-        #print("outputs: ", outputs)
-
-        # Print the type of output
-        print("Type of output: ", type(outputs))
 
         end_time_for_predict = time.time()
         inference_time = end_time_for_predict - start_time_for_predict
@@ -198,7 +194,7 @@ class YOLOv8OVMS:
         self.print_average_inference_time()
         self.get_fps()
 
-        frame = self.postprocess(self.cap.read()[1], outputs, inference_time)
+        #frame = self.postprocess(self.cap.read()[1], outputs, inference_time)
 
         return self.cap.read()[1]
 
