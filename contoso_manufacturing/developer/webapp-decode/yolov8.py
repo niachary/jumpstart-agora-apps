@@ -5,10 +5,11 @@ import time
 from ovmsclient import make_grpc_client
 from tabulate import tabulate
 import os
+import urllib.request
 import datetime
 
 class YOLOv8OVMS:
-    def __init__(self, rtsp_url, class_names, input_shape, color_palette, confidence_thres, iou_thres, model_name, ovms_url, save_img_loc, skip_rate, verbose=False):
+    def __init__(self, rtsp_url, class_names, input_shape, color_palette, confidence_thres, iou_thres, model_name, azureml_endpoint, azureml_token, save_img_loc, skip_rate, verbose=False):
         print(f"Initializing YOLOv8OVMS with RTSP URL: {rtsp_url}")
         self.rtsp_url = rtsp_url
         self.class_names = class_names
@@ -17,7 +18,8 @@ class YOLOv8OVMS:
         self.confidence_thres=confidence_thres
         self.iou_thres=iou_thres
         self.model_name=model_name
-        self.ovms_url=ovms_url
+        self.azureml_endpoint=azureml_endpoint
+        self.azureml_token=azureml_token
         self.save_img_loc=save_img_loc
         self.verbose=verbose
         self.frame_number =0
@@ -167,7 +169,27 @@ class YOLOv8OVMS:
         
         image_data = self.preprocess()
 
-        outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
+        # Build the rest request
+        data = {"images": image_data}
+        body = str.encode(json.dumps(data))
+        if not self.azureml_token:
+            raise Exception("A key should be provided to invoke the endpoint")
+
+        headers = {'Content-Type':'application/json', 'Authorization':('Bearer '+ self.azureml_token)}
+        req = urllib.request.Request(self.azureml_endpoint, body, headers)
+        try:
+            response = urllib.request.urlopen(req)
+            outputs = response.read()
+            print(outputs)
+        
+        except urllib.error.HTTPError as error:
+            print("The request failed with status code: " + str(error.code))
+
+            # Print the headers - they include the requert ID and the timestamp, which are useful for debugging the failure
+            print(error.info())
+            print(error.read().decode("utf8", 'ignore'))
+
+        #outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
         frame = self.postprocess(self.cap.read()[1], outputs)
 
         return frame
