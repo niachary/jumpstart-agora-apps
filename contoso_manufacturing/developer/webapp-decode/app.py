@@ -28,7 +28,7 @@ def reload_config():
     with open('./config/config_file.json') as config_file:
         return json.load(config_file)
 
-def init_yolo_detector():
+def init_yolo_detector(video_url):
     """
     Initializes and returns a YOLOv8OVMS object for object detection.
 
@@ -37,8 +37,12 @@ def init_yolo_detector():
     """
     model_config = config["yolov8n"]
     color_palette = np.random.uniform(0, 255, size=(len(model_config['class_names']), 3))
+    if video_url is not None:
+        url = video_url
+    else:
+        url = model_config['rtsp_url']
     return YOLOv8OVMS(
-        rtsp_url=model_config['rtsp_url'],
+        rtsp_url=url,
         class_names=model_config['class_names'],
         input_shape=model_config['input_shape'],
         color_palette=color_palette,
@@ -126,7 +130,7 @@ def show_iframe():
     url = request.args.get('url', 'https://google.com')
     return render_template('index.html', iframe_url=url)
 
-def gen_frames(video_name): 
+def gen_frames(video_name, video_url): 
     """
     Generate frames from a video stream.
 
@@ -153,14 +157,18 @@ def gen_frames(video_name):
         # Reload configuration for changes with GitOps
         config = reload_config()
 
-        if video_name == "yolov8n":
-            latest_choice_detector = init_yolo_detector()
-        elif video_name == "safety-yolo8":
-            latest_choice_detector = init_yolo_safety_detector()
-        elif video_name == "welding":
-            latest_choice_detector = init_welding_detector()
-        elif video_name == "human-pose-estimation":
-              latest_choice_detector = init_pose_estimator()
+        if video_name is not None:
+            if video_name == "yolov8n":
+                latest_choice_detector = init_yolo_detector()
+            elif video_name == "safety-yolo8":
+                latest_choice_detector = init_yolo_safety_detector()
+            elif video_name == "welding":
+                latest_choice_detector = init_welding_detector()
+            elif video_name == "human-pose-estimation":
+                latest_choice_detector = init_pose_estimator()
+        else:
+            # only one model is available from Azure ML
+            latest_choice_detector = init_yolo_detector(video_url=video_url)
 
     while video_name != "":
         processed_frame = latest_choice_detector.run()
@@ -178,11 +186,16 @@ def video_feed():
     Returns:
         Response: The response object containing the video frames.
     """
+    # Get the video name from the request    
     video_name = request.args.get('video')
-    if video_name is None:
-        return Response('Video name parameter is missing', status=400)
+    
+    # Get the video URL from the request
+    video_url = request.args.get('url')
 
-    return Response(gen_frames(video_name), mimetype='multipart/x-mixed-replace; boundary=frame')  # stream the video frames
+    if video_url is None and video_name is None:
+        return Response('Video url parameter is missing', status=400)
+
+    return Response(gen_frames(video_name, video_url), mimetype='multipart/x-mixed-replace; boundary=frame')  # stream the video frames
 
 @app.route('/')
 def index():
