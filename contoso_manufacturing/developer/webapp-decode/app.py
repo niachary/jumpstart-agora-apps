@@ -10,7 +10,7 @@ from pose_estimator import PoseEstimator
 app = Flask(__name__)
 
 latest_choice_detector = None # Global variable to keep track of the latest choice of the user
-#ovms_url = os.environ.get('OVMS_URL', '')
+ovms_url = os.environ.get('OVMS_URL', '')
 azureml_endpoint = os.environ.get('AZUREML_ENDPOINT', '')
 # TODO: read from keyvault secret
 azureml_token = os.environ.get('AZUREML_TOKEN', '')
@@ -28,7 +28,7 @@ def reload_config():
     with open('./config/config_file.json') as config_file:
         return json.load(config_file)
 
-def init_yolo_detector(video_url):
+def init_yolo_detector(video_url = None):
     """
     Initializes and returns a YOLOv8OVMS object for object detection.
 
@@ -49,7 +49,7 @@ def init_yolo_detector(video_url):
         confidence_thres=model_config['conf_thres'],
         iou_thres=model_config['iou_thres'],
         model_name="yolov8n", 
-        #ovms_url=ovms_url, 
+        ovms_url=ovms_url, 
         azureml_endpoint=azureml_endpoint,
         azureml_token=azureml_token,
         save_img_loc=False,

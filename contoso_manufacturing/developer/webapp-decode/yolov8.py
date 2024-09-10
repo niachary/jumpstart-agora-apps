@@ -10,7 +10,7 @@ import datetime
 import base64
 
 class YOLOv8OVMS:
-    def __init__(self, rtsp_url, class_names, input_shape, color_palette, confidence_thres, iou_thres, model_name, azureml_endpoint, azureml_token, save_img_loc, skip_rate, verbose=False):
+    def __init__(self, rtsp_url, class_names, input_shape, color_palette, confidence_thres, iou_thres, model_name, ovms_url, azureml_endpoint, azureml_token, save_img_loc, skip_rate, verbose=False):
         print(f"Initializing YOLOv8OVMS with RTSP URL: {rtsp_url}")
         self.rtsp_url = rtsp_url
         self.class_names = class_names
@@ -24,6 +24,8 @@ class YOLOv8OVMS:
         self.save_img_loc=save_img_loc
         self.verbose=verbose
         self.frame_number =0
+        self.total_inference_time = 0
+        self.total_frames = 0
         self.skip_rate=skip_rate
 
         self.cap = cv2.VideoCapture(rtsp_url)
@@ -188,9 +190,9 @@ class YOLOv8OVMS:
                     }
                 }
                 body = str.encode(json.dumps(request_json))
-                url = 'http://10.43.12.10/api/v1/endpoint/niacharyws0904-dkyii/score'
+                url = ''
                 # Replace this with the primary/secondary key, AMLToken, or Microsoft Entra ID token for the endpoint
-                api_key = 'P46vvLWKxqGzpQ1yCg1HZh2bVWwFkMA0'
+                api_key = ''
                 if not api_key:
                     raise Exception("A key should be provided to invoke the endpoint")
 
@@ -199,7 +201,14 @@ class YOLOv8OVMS:
                 req = urllib.request.Request(url, body, headers)
 
                 try:
+                    start_time = time.time()  # Record the start time
                     response = urllib.request.urlopen(req)
+                    end_time = time.time()  # Record the end time
+                    inference_time = end_time - start_time  # Calculate the inference time
+                    self.total_inference_time += inference_time  # Add to the total inference time
+                    self.total_frames += 1  # Increment the total number of frames processed
+                    print("Inference time: {:.3f} seconds".format(inference_time))
+                    print("Average FPS: {:.2f}".format(self.total_frames / self.total_inference_time))
 
                     result = response.read()
                     print(result)
