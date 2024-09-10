@@ -7,6 +7,7 @@ from tabulate import tabulate
 import os
 import urllib.request
 import datetime
+import base64
 
 class YOLOv8OVMS:
     def __init__(self, rtsp_url, class_names, input_shape, color_palette, confidence_thres, iou_thres, model_name, azureml_endpoint, azureml_token, save_img_loc, skip_rate, verbose=False):
@@ -159,7 +160,7 @@ class YOLOv8OVMS:
 
     def run(self):
         if(self.verbose):
-            print("Running detection...")
+            print("Running detection from model mmyolof...")
 
         self.frame_number += 1
         # If mod = 0, i will get the frame and skip it
@@ -167,30 +168,75 @@ class YOLOv8OVMS:
             self.cap.read()
             return None
         
-        image_data = self.preprocess()
+        print(self.azureml_endpoint)
+
+        print(self.azureml_token)
+
+        #image_data = self.preprocess()
+        ret, frame = self.cap.read()
+        if ret:
+            # Encode the frame to a binary format (e.g., JPEG)
+            ret, buffer = cv2.imencode('.jpg', frame)
+            if ret:
+                # Convert the encoded frame to binary data
+                binary_image = buffer.tobytes()
+                request_json = {
+                    "input_data": {
+                        "columns": ["image"],
+                        "index": [0],
+                        "data": [base64.encodebytes(binary_image).decode("utf-8")],
+                    }
+                }
+                body = str.encode(json.dumps(request_json))
+                url = 'http://10.43.12.10/api/v1/endpoint/niacharyws0904-dkyii/score'
+                # Replace this with the primary/secondary key, AMLToken, or Microsoft Entra ID token for the endpoint
+                api_key = 'P46vvLWKxqGzpQ1yCg1HZh2bVWwFkMA0'
+                if not api_key:
+                    raise Exception("A key should be provided to invoke the endpoint")
+
+                headers = {'Content-Type':'application/json', 'Authorization':('Bearer '+ api_key)}
+
+                req = urllib.request.Request(url, body, headers)
+
+                try:
+                    response = urllib.request.urlopen(req)
+
+                    result = response.read()
+                    print(result)
+                except urllib.error.HTTPError as error:
+                    print("The request failed with status code: " + str(error.code))
+
+                    # Print the headers - they include the requert ID and the timestamp, which are useful for debugging the failure
+                    print(error.info())
+                    print(error.read().decode("utf8", 'ignore'))
+            else:
+                print("Failed to encode frame")
+        else:
+            print("Failed to capture frame")
+
 
         # Build the rest request
-        data = {"images": image_data}
-        body = str.encode(json.dumps(data))
-        if not self.azureml_token:
-            raise Exception("A key should be provided to invoke the endpoint")
+        # data = {"images": image_data}
+        # body = str.encode(json.dumps(data))
+        # if not self.azureml_token:
+        #     raise Exception("A key should be provided to invoke the endpoint")
 
-        headers = {'Content-Type':'application/json', 'Authorization':('Bearer '+ self.azureml_token)}
-        req = urllib.request.Request(self.azureml_endpoint, body, headers)
-        try:
-            response = urllib.request.urlopen(req)
-            outputs = response.read()
-            print(outputs)
+        # headers = {'Content-Type':'application/json', 'Authorization':('Bearer '+ self.azureml_token)}
+        # req = urllib.request.Request(self.azureml_endpoint, body, headers)
+        # try:
+        #     response = urllib.request.urlopen(req)
+        #     outputs = response.read()
+        #     print(outputs)
         
-        except urllib.error.HTTPError as error:
-            print("The request failed with status code: " + str(error.code))
+        # except urllib.error.HTTPError as error:
+        #     print("The request failed with status code: " + str(error.code))
 
-            # Print the headers - they include the requert ID and the timestamp, which are useful for debugging the failure
-            print(error.info())
-            print(error.read().decode("utf8", 'ignore'))
+        #     # Print the headers - they include the requert ID and the timestamp, which are useful for debugging the failure
+        #     print(error.info())
+        #     print(error.read().decode("utf8", 'ignore'))
 
-        #outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
-        frame = self.postprocess(self.cap.read()[1], outputs)
+        # #outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
+        # frame = self.postprocess(self.cap.read()[1], outputs)
 
         return frame
 
