@@ -6,6 +6,8 @@ from ovmsclient import make_grpc_client
 from tabulate import tabulate
 import os
 import datetime
+import threading
+import queue
 
 class YOLOv8OVMS:
     def __init__(self, rtsp_url, class_names, input_shape, color_palette, confidence_thres, iou_thres, model_name, ovms_url, save_img_loc, skip_rate, verbose=False):
@@ -22,19 +24,46 @@ class YOLOv8OVMS:
         self.verbose=verbose
         self.frame_number =0
         self.skip_rate=skip_rate
-
-        self.cap = cv2.VideoCapture(rtsp_url)
         self.grpc_client = make_grpc_client(ovms_url)
+        self.stopped = False
+        self.lock = threading.Lock()
+        self.frame_queue = queue.Queue(maxsize=10)
+        self.capture_thread = threading.Thread(target=self.capture_frames)
+        self.capture_thread.start()
+
+    def capture_frames(self):
+        cap = cv2.VideoCapture(self.rtsp_url)
+        while not self.stopped:
+            ret, frame = cap.read()
+            if not ret:
+                print("Failed to grab frame")
+                break
+            if not self.frame_queue.full():
+                self.frame_queue.put(frame)
+        cap.release()
+
+        #video_getter = VideoGet(src=rtsp_url).start()
+
+        #self.cap = cv2.VideoCapture(rtsp_url)
+        # while not video_getter.stopped:
+        #    video_getter.stop() 
+        #    print("Error: stopping video")
+        # else:
+        #     frame = video_getter.frame
+        #     if frame is not None:
+        #         self.img_height, self.img_width = frame.shape[:2]
+        #     else:
+        #         print("Failed to grab frame to set image dimensions")
         
-        if not self.cap.isOpened():
-            print("Error: Unable to open video source.")
-        else:
-            # Lee un frame para determinar el tamaño de los frames del video
-            ret, frame = self.cap.read()
-            if ret:
-                self.img_height, self.img_width = frame.shape[:2]
-            else:
-                print("Failed to grab frame to set image dimensions")
+        # if not self.cap.isOpened():
+        #     print("Error: Unable to open video source.")
+        # else:
+        #     # Lee un frame para determinar el tamaño de los frames del video
+        #     ret, frame = self.cap.read()
+        #     if ret:
+        #         self.img_height, self.img_width = frame.shape[:2]
+        #     else:
+        #         print("Failed to grab frame to set image dimensions")
   
     def preprocess(self):
         if(self.verbose):
@@ -156,22 +185,41 @@ class YOLOv8OVMS:
         cv2.putText(img, label, (label_x, label_y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 0), 1, cv2.LINE_AA)
 
     def run(self):
-        if(self.verbose):
-            print("Running detection...")
+        while not self.stopped:
+            if(self.verbose):
+                print("Running detection...")
 
-        self.frame_number += 1
-        # If mod = 0, i will get the frame and skip it
-        if self.frame_number % self.skip_rate == 0:
-            self.cap.read()
-            return None
-        
-        image_data = self.preprocess()
+            self.frame_number += 1
+            # If mod = 0, i will get the frame and skip it
+            if self.frame_number % self.skip_rate == 0:
+                if not self.frame_queue.empty():
+                    self.cap = self.frame_queue.get()
+                continue
+            
+            if not self.frame_queue.empty():
+                frame = self.frame_queue.get()
+                # Preprocess the current frame
+                image_data = self.preprocess(frame)
 
-        outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
-        frame = self.postprocess(self.cap.read()[1], outputs)
+                # Send the preprocessed frame to the gRPC client for prediction
+                outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
 
-        return frame
+                # Postprocess the prediction results and get the final frame
+                processed_frame = self.postprocess(frame, outputs)
 
+                return processed_frame
+        # image_data = self.preprocess()
+
+        # outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
+        # frame = self.postprocess(self.cap.read()[1], outputs)
+
+        # return frame
+
+    def stop(self):
+        with self.lock:
+            self.stopped = True
+        self.capture_thread.join()
+    
     def log(self, message):
         """Logs a message with a timestamp if verbose is true."""
         if self.verbose:
@@ -180,6 +228,8 @@ class YOLOv8OVMS:
             
     def __del__(self):
         print("Releasing resources...")
-        self.cap.release()
+        #self.cap.release()
+        self.stop()
         cv2.destroyAllWindows()
         print("Released video capture and destroyed all windows.")
+    
