@@ -65,16 +65,16 @@ class YOLOv8OVMS:
         #     else:
         #         print("Failed to grab frame to set image dimensions")
   
-    def preprocess(self):
+    def preprocess(self, frame):
         if(self.verbose):
             print("Preprocessing the frame...")
 
-        ret, img = self.cap.read()
-        if not ret:
-            print("Failed to grab frame")
-            return None
-        self.img_height, self.img_width = img.shape[:2]  # Actualiza las dimensiones basadas en el frame actual
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        # ret, img = self.cap.read()
+        # if not ret:
+        #     print("Failed to grab frame")
+        #     return None
+        self.img_height, self.img_width = frame.shape[:2]  # Actualiza las dimensiones basadas en el frame actual
+        img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         img = cv2.resize(img, (self.input_width, self.input_height))
         image_data = np.array(img) / 255.0
         image_data = np.transpose(image_data, (2, 0, 1))
