@@ -27,7 +27,7 @@ class YOLOv8OVMS:
         self.grpc_client = make_grpc_client(ovms_url)
         self.stopped = False
         self.lock = threading.Lock()
-        self.frame_queue = queue.Queue(maxsize=10)
+        self.frame_queue = queue.Queue(maxsize=50)
         self.capture_thread = threading.Thread(target=self.capture_frames)
         self.capture_thread.start()
 
