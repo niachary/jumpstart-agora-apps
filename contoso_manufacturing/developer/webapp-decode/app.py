@@ -45,7 +45,7 @@ def init_yolo_detector():
         model_name="yolov8n", 
         ovms_url=ovms_url, 
         save_img_loc=False,
-        verbose=False,
+        verbose=True,
         skip_rate=10
     )
 
