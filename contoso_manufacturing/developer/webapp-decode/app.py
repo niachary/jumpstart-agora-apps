@@ -2,6 +2,7 @@ from flask import Flask, render_template, Response, request
 import os
 import cv2
 import json
+import time
 import numpy as np
 from yolov8 import YOLOv8OVMS
 from welding import WeldPorosity
@@ -178,12 +179,21 @@ def gen_frames(video_name):
               latest_choice_detector = init_pose_estimator()
 
     while video_name != "":
+        start_time = time.time()
         processed_frame = latest_choice_detector.run()
+        end_time = time.time()
+        processing_time = end_time - start_time
+        print(f"Time taken to process frame: {processing_time} seconds")
+
         if processed_frame is not None:
             ret, buffer = cv2.imencode('.jpg', processed_frame)
             frame = buffer.tobytes()
+            display_start_time = time.time()
             yield (b'--frame\r\n'
                 b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            display_end_time = time.time()
+            display_time = display_end_time - display_start_time
+            print(f"Time taken to display frame: {display_time} seconds")
 
 @app.route('/video_feed')
 def video_feed():
