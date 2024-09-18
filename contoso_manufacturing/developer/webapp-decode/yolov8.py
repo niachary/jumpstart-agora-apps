@@ -188,6 +188,10 @@ class YOLOv8OVMS:
         self.total_inference_time += inference_time
         self.total_frames += 1
 
+        print(f"Total frames processed: {self.total_frames:.03f}")
+        self.print_average_inference_time()
+        self.get_fps()
+
         frame = self.postprocess(self.cap.read()[1], outputs, inference_time)
 
         return frame
