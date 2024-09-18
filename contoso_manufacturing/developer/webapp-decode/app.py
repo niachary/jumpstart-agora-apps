@@ -7,6 +7,7 @@ from yolov8 import YOLOv8OVMS
 from welding import WeldPorosity
 from pose_estimator import PoseEstimator
 from bolt_detection import BoltDetection
+import time
 
 app = Flask(__name__)
 
@@ -177,13 +178,26 @@ def gen_frames(video_name):
         elif video_name == "human-pose-estimation":
               latest_choice_detector = init_pose_estimator()
 
+    frame_num = 1
+    processing_time = 0
     while video_name != "":
+        frame_num += 1
+        start_time = time.time()
         processed_frame = latest_choice_detector.run()
+        end_time = time.time()
+        processing_time += end_time - start_time
+        #print(f"Time taken to process frame: {processing_time} seconds")
+        print("average processing time: ", processing_time/frame_num)
         if processed_frame is not None:
             ret, buffer = cv2.imencode('.jpg', processed_frame)
             frame = buffer.tobytes()
+            display_start_time = time.time()
             yield (b'--frame\r\n'
                 b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            display_end_time = time.time()
+            display_time = display_end_time - display_start_time
+            print(f"Time taken to display frame: {display_time} seconds")
+    
 
 @app.route('/video_feed')
 def video_feed():
