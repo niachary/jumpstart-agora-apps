@@ -36,12 +36,12 @@ class YOLOv8OVMS:
             ret, frame = self.cap.read()
             if ret:
                 self.img_height, self.img_width = frame.shape[:2]
+                print(f"Image dimensions: {self.img_width}x{self.img_height}")
             else:
                 print("Failed to grab frame to set image dimensions")
   
     def preprocess(self):
-        if(self.verbose):
-            print("Preprocessing the frame...")
+        self.log("Preprocessing the frame...")
 
         ret, img = self.cap.read()
         if not ret:
@@ -55,9 +55,8 @@ class YOLOv8OVMS:
         image_data = np.expand_dims(image_data, axis=0).astype(np.float32)
         return image_data
 
-    def postprocess(self, input_image, output, inference_time):
-        if(self.verbose):
-            print("Postprocessing the output...")
+    def postprocess(self, input_image, output):
+        self.log("Postprocessing the output...")
 
         # Transpose and squeeze the output to match the expected shape
         outputs = np.transpose(np.squeeze(output[0]))
@@ -122,17 +121,20 @@ class YOLOv8OVMS:
             class_id = class_ids[i]
 
             # Draw the detection on the input image
-            self.draw_detections(input_image, box, score, class_id, inference_time)
+            self.draw_detections(input_image, box, score, class_id)
             table_data.append([i, box, score, self.class_names[class_id]])
+
+        # Draw the FPS counter on the image
+        self.draw_fps(input_image)
 
         # Print the table
         headers = ["Index", "Box", "Score", "Class"]
-        #self.log(self, str(tabulate(table_data, headers=headers, tablefmt="grid")))
+        #self.log(str(tabulate(table_data, headers=headers, tablefmt="grid")))
         
         # Return the modified input image
         return input_image
 
-    def draw_detections(self, img, box, score, class_id, inference_time):
+    def draw_detections(self, img, box, score, class_id):
         # Extract the coordinates of the bounding box
         x1, y1, w, h = box
 
@@ -148,51 +150,83 @@ class YOLOv8OVMS:
         # Calculate the dimensions of the label text
         (label_width, label_height), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 1)
 
-        # Calculate the position of the label text
+        # Calculate the position of the label text; this is the bottom-left corner of the text string
         label_x = x1
         label_y = y1 - 10 if y1 - 10 > label_height else y1 + 20
 
-        # Draw a filled rectangle as the background for the label text
-        cv2.rectangle(img, (label_x, label_y - label_height - 10), (label_x + label_width, label_y + label_height), (0,0,255), cv2.FILLED)
+        # Draw a filled rectangle as the background for the label text, plus a 10 pixel border above and below
+        cv2.rectangle(img, (label_x, label_y - label_height - 10), (label_x + label_width, label_y + 10), (0,0,255), cv2.FILLED)
 
          # Draw the label text on the image
         cv2.putText(img, label, (label_x, label_y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 0), 1, cv2.LINE_AA)
 
-        #cv2.putText(img, f"inference time: {inference_time} seconds", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+    def draw_fps(self, img):
 
-        #cv2.putText(img, f"total frames processed: {self.total_frames}", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+        # Calculate FPS *including* pre- and post-processing
+        total_time = time.time() - self.start_time
+        fps = self.total_frames / total_time
+        self.log(f"FPS: {fps:.03f} averaged over {self.total_frames} frames")
 
-        print(f"Total frames processed: {self.total_frames:.03f}")
-        self.print_average_inference_time()
-        self.get_fps()
+        # Calculate FPS of the AI inferencing model only
+        inference_fps = self.total_frames / self.total_inference_time
 
-        #fps = self.get_fps()
-        #cv2.putText(img, f"fps: {fps}", (200, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+        # Create an array of strings - one for each line of text to display on the image
+        label_array = [f"FPS: {fps:.02f}",
+                       f"FPS (inferencing): {inference_fps:.02f}",
+                       f"Input: {self.img_width}x{self.img_height}",
+                       f"Output: {self.input_width}x{self.input_height}",
+                       f"Model: {self.model_name}"]
+        
+        # Define the font style and size
+        font_scale = 1.0
+        font_face = cv2.FONT_HERSHEY_SIMPLEX
+        font_thickness = 1
+        background_color = (0,0,255)    # red
+        font_color = (0, 0, 0)          # black
+        pixel_border = 5
+
+        # Define the starting position for the text (30 pixels from the top left corner)
+        (label_x, label_y) = (30, 30)
+
+        # Loop through each line of text in the label array and draw it on the image
+        for label in label_array:
+            # Calculate the dimensions of the label text
+            (label_width, label_height), _ = cv2.getTextSize(label, font_face, font_scale, font_thickness)
+            self.log(f"Label: {label}, Width: {label_width}, Height: {label_height}")
+
+            # Draw a filled rectangle as the background for the label text, including a border on all sides
+            cv2.rectangle(img, (label_x - pixel_border, label_y - pixel_border), (label_x + label_width + pixel_border, label_y + label_height + pixel_border), background_color, cv2.FILLED)
+            self.log(f"Draw rectangle at ({label_x - pixel_border}, {label_y - pixel_border}) to ({label_x + label_width + pixel_border}, {label_y + label_height + pixel_border})")
+
+            # Draw the label text on the image
+            cv2.putText(img, label, (label_x, label_y + label_height), font_face, font_scale, font_color, font_thickness, cv2.LINE_AA)
+            self.log(f"Draw text at ({label_x}, {label_y + label_height})")
+
+            # Update the starting position for the next line, including a pixel_border pixel margin between lines
+            label_y += (label_height + 2 * pixel_border)
 
     def run(self):
-        if(self.verbose):
-            print("Running detection...")
+        self.log("Running detection...")
 
         self.frame_number += 1
         # If mod = 0, i will get the frame and skip it
-        if self.frame_number % self.skip_rate == 0:
+        if ((self.skip_rate > 0) and (self.frame_number % self.skip_rate == 0)):
             self.cap.read()
             return None
-        
+
         image_data = self.preprocess()
 
+        # Perform inference on the preprocessed image; capture the start and end times
         start_time_for_predict = time.time()
         outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
         end_time_for_predict = time.time()
+
+        # Update metrics for inference time and total frames processed - used for calculating FPS
         inference_time = end_time_for_predict - start_time_for_predict
         self.total_inference_time += inference_time
         self.total_frames += 1
 
-        print(f"Total frames processed: {self.total_frames:.03f}")
-        self.print_average_inference_time()
-        self.get_fps()
-
-        frame = self.postprocess(self.cap.read()[1], outputs, inference_time)
+        frame = self.postprocess(self.cap.read()[1], outputs)
 
         return frame
 
@@ -206,16 +240,6 @@ class YOLOv8OVMS:
         average_inference_time = self.total_inference_time / self.total_frames
         print(f"Average inference time: {average_inference_time:.03f} secs")
     
-    def get_fps(self):
-        # Total time includes pre-processing time
-        # total_time = time.time() - self.start_time
-        # fps = self.total_frames / total_time
-
-        # Calculate FPS *excluding* pre-processing time
-        fps = self.total_frames / self.total_inference_time
-        print(f"FPS: {fps:.03f}")
-        return fps
-            
     def __del__(self):
         print("Releasing resources...")
         self.cap.release()
