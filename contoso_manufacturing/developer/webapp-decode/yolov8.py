@@ -22,7 +22,13 @@ class YOLOv8OVMS:
         self.verbose=verbose
         self.frame_number =0
         self.skip_rate=skip_rate
-        self.total_inference_time = 0
+        self.total_preprocess_time = 0.0
+        self.total_inference_time = 0.0
+        self.total_postprocess_time = 0.0
+        self.preprocess_fps = 0.0
+        self.inference_fps = 0.0
+        self.postprocess_fps = 0.0
+        self.total_fps = 0.0
         self.total_frames = 0
         self.start_time = time.time()
 
@@ -162,19 +168,13 @@ class YOLOv8OVMS:
 
     def draw_fps(self, img):
 
-        # Calculate FPS *including* pre- and post-processing
-        total_time = time.time() - self.start_time
-        fps = self.total_frames / total_time
-        self.log(f"FPS: {fps:.03f} averaged over {self.total_frames} frames")
-
-        # Calculate FPS of the AI inferencing model only
-        inference_fps = self.total_frames / self.total_inference_time
-
         # Create an array of strings - one for each line of text to display on the image
-        label_array = [f"FPS: {fps:.02f}",
-                       f"FPS (inferencing): {inference_fps:.02f}",
+        label_array = [f"FPS: {self.total_fps:.02f}",
+                       f"FPS (pre-process): {self.preprocess_fps:.02f}",
+                       f"FPS (inference): {self.inference_fps:.02f}",
+                       f"FPS (post-process): {self.postprocess_fps:.02f}",
                        f"Input: {self.img_width}x{self.img_height}",
-                       f"Output: {self.input_width}x{self.input_height}",
+                       f"Inferencing: {self.input_width}x{self.input_height}",
                        f"Model: {self.model_name}"]
         
         # Define the font style and size
@@ -183,7 +183,7 @@ class YOLOv8OVMS:
         font_thickness = 1
         background_color = (0,0,255)    # red
         font_color = (0, 0, 0)          # black
-        pixel_border = 5
+        pixel_border = 10
 
         # Define the starting position for the text (30 pixels from the top left corner)
         (label_x, label_y) = (30, 30)
@@ -213,20 +213,32 @@ class YOLOv8OVMS:
         if ((self.skip_rate > 0) and (self.frame_number % self.skip_rate == 0)):
             self.cap.read()
             return None
-
+        
+        # Pre-process the image; capture the start and end times
+        time0 = time.time()
         image_data = self.preprocess()
 
         # Perform inference on the preprocessed image; capture the start and end times
-        start_time_for_predict = time.time()
+        time1 = time.time()
         outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
-        end_time_for_predict = time.time()
 
-        # Update metrics for inference time and total frames processed - used for calculating FPS
-        inference_time = end_time_for_predict - start_time_for_predict
-        self.total_inference_time += inference_time
+        # Post-processing including drawing bounding boxes
+        time2 = time.time()
+        frame = self.postprocess(self.cap.read()[1], outputs)
+        time3 = time.time()
+
+        # Update metrics for preprocess and postprocess time
+        self.total_preprocess_time += (time1 - time0)
+        self.total_inference_time += (time2 - time1)
+        self.total_postprocess_time += (time3 - time2)
         self.total_frames += 1
 
-        frame = self.postprocess(self.cap.read()[1], outputs)
+        # Calculate FPS stats for each stage 
+        self.preprocess_fps = self.total_frames / self.total_preprocess_time
+        self.inference_fps = self.total_frames / self.total_inference_time
+        self.postprocess_fps = self.total_frames / self.total_postprocess_time
+        self.total_fps = self.total_frames / (time.time() - self.start_time)    # This includes processing time outside of self.run()
+        self.log(f"FPS={self.total_fps} Preprocess={self.preprocess_fps:.03f} Inference={self.inference_fps:.03f} Postprocess={self.postprocess_fps:.03f} ({self.total_frames} frames)")
 
         return frame
 

@@ -7,6 +7,7 @@ from yolov8 import YOLOv8OVMS
 from welding import WeldPorosity
 from pose_estimator import PoseEstimator
 from bolt_detection import BoltDetection
+import time
 
 app = Flask(__name__)
 
@@ -46,7 +47,7 @@ def init_yolo_detector():
         ovms_url=ovms_url, 
         save_img_loc=False,
         verbose=True,
-        skip_rate=10
+        skip_rate=0
     )
 
 def init_yolo_safety_detector():
@@ -71,8 +72,8 @@ def init_yolo_safety_detector():
         model_name="safety-yolo8", 
         ovms_url=ovms_url, 
         save_img_loc=False,
-        verbose=False,
-        skip_rate=2
+        verbose=True,
+        skip_rate=0
     )
 
 def init_welding_detector():
@@ -178,12 +179,17 @@ def gen_frames(video_name):
               latest_choice_detector = init_pose_estimator()
 
     while video_name != "":
+        print(f"{time.time()} - Start processing frame")
         processed_frame = latest_choice_detector.run()
+        print(f"{time.time()} - End   processing frame")
+
         if processed_frame is not None:
+            print(f"{time.time()} - Start JPEG encoding")
             ret, buffer = cv2.imencode('.jpg', processed_frame)
             frame = buffer.tobytes()
             yield (b'--frame\r\n'
-                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')            
+            print(f"{time.time()} - End   JPEG encoding")
 
 @app.route('/video_feed')
 def video_feed():
