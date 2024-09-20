@@ -22,12 +22,10 @@ class YOLOv8OVMS:
         self.verbose=verbose
         self.frame_number =0
         self.skip_rate=skip_rate
-        self.total_preprocess_time = 0.0
+
+        # Track frames and inference processing time for displaying FPS performance metrics 
         self.total_inference_time = 0.0
-        self.total_postprocess_time = 0.0
-        self.preprocess_fps = 0.0
         self.inference_fps = 0.0
-        self.postprocess_fps = 0.0
         self.total_fps = 0.0
         self.total_frames = 0
         self.start_time = time.time()
@@ -170,9 +168,7 @@ class YOLOv8OVMS:
 
         # Create an array of strings - one for each line of text to display on the image
         label_array = [f"FPS: {self.total_fps:.02f}",
-                       f"FPS (pre-process): {self.preprocess_fps:.02f}",
                        f"FPS (inference): {self.inference_fps:.02f}",
-                       f"FPS (post-process): {self.postprocess_fps:.02f}",
                        f"Input: {self.img_width}x{self.img_height}",
                        f"Inferencing: {self.input_width}x{self.input_height}",
                        f"Model: {self.model_name}"]
@@ -215,30 +211,24 @@ class YOLOv8OVMS:
             return None
         
         # Pre-process the image; capture the start and end times
-        time0 = time.time()
         image_data = self.preprocess()
 
         # Perform inference on the preprocessed image; capture the start and end times
         time1 = time.time()
         outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
+        time2 = time.time()
 
         # Post-processing including drawing bounding boxes
-        time2 = time.time()
         frame = self.postprocess(self.cap.read()[1], outputs)
-        time3 = time.time()
 
         # Update metrics for preprocess and postprocess time
-        self.total_preprocess_time += (time1 - time0)
         self.total_inference_time += (time2 - time1)
-        self.total_postprocess_time += (time3 - time2)
         self.total_frames += 1
 
-        # Calculate FPS stats for each stage 
-        self.preprocess_fps = self.total_frames / self.total_preprocess_time
+        # Calculate FPS for both the final feed and model inferencing 
         self.inference_fps = self.total_frames / self.total_inference_time
-        self.postprocess_fps = self.total_frames / self.total_postprocess_time
-        self.total_fps = self.total_frames / (time.time() - self.start_time)    # This includes processing time outside of self.run()
-        self.log(f"FPS={self.total_fps} Preprocess={self.preprocess_fps:.03f} Inference={self.inference_fps:.03f} Postprocess={self.postprocess_fps:.03f} ({self.total_frames} frames)")
+        self.total_fps = self.total_frames / (time.time() - self.start_time)    # This includes e.g. JPEG encoding in the parent method outside of self.run()
+        self.log(f"FPS={self.total_fps} Inference={self.inference_fps:.03f} ({self.total_frames} frames)")
 
         return frame
 
