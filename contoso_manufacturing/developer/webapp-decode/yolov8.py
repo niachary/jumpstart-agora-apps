@@ -132,7 +132,7 @@ class YOLOv8OVMS:
         self.draw_fps(input_image)
 
         # Print the table
-        headers = ["Index", "Box", "Score", "Class"]
+        # headers = ["Index", "Box", "Score", "Class"]
         #self.log(str(tabulate(table_data, headers=headers, tablefmt="grid")))
         
         # Return the modified input image
@@ -191,14 +191,10 @@ class YOLOv8OVMS:
             self.log(f"Label: {label}, Width: {label_width}, Height: {label_height}")
 
             # Draw a filled rectangle as the background for the label text, including a border on all sides
-            cv2.rectangle(img, (label_x - pixel_border, label_y - pixel_border), (label_x + label_width + pixel_border, label_y + label_height + pixel_border), background_color, cv2.FILLED)
-            self.log(f"Draw rectangle at ({label_x - pixel_border}, {label_y - pixel_border}) to ({label_x + label_width + pixel_border}, {label_y + label_height + pixel_border})")
-
             # Draw the label text on the image
-            cv2.putText(img, label, (label_x, label_y + label_height), font_face, font_scale, font_color, font_thickness, cv2.LINE_AA)
-            self.log(f"Draw text at ({label_x}, {label_y + label_height})")
-
             # Update the starting position for the next line, including a pixel_border pixel margin between lines
+            cv2.rectangle(img, (label_x - pixel_border, label_y - pixel_border), (label_x + label_width + pixel_border, label_y + label_height + pixel_border), background_color, cv2.FILLED)
+            cv2.putText(img, label, (label_x, label_y + label_height), font_face, font_scale, font_color, font_thickness, cv2.LINE_AA)
             label_y += (label_height + 2 * pixel_border)
 
     def run(self):
@@ -210,22 +206,20 @@ class YOLOv8OVMS:
             self.cap.read()
             return None
         
-        # Pre-process the image; capture the start and end times
-        image_data = self.preprocess()
-
+        # Pre-process the image
         # Perform inference on the preprocessed image; capture the start and end times
+        # Post-processing including drawing bounding boxes
+        image_data = self.preprocess()
         time1 = time.time()
         outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
         time2 = time.time()
-
-        # Post-processing including drawing bounding boxes
         frame = self.postprocess(self.cap.read()[1], outputs)
 
-        # Update metrics for preprocess and postprocess time
+        # Update metrics used for FPS calculations
         self.total_inference_time += (time2 - time1)
         self.total_frames += 1
 
-        # Calculate FPS for both the final feed and model inferencing 
+        # Calculate FPS for both the inferencing step and the final feed  
         self.inference_fps = self.total_frames / self.total_inference_time
         self.total_fps = self.total_frames / (time.time() - self.start_time)    # This includes e.g. JPEG encoding in the parent method outside of self.run()
         self.log(f"FPS={self.total_fps} Inference={self.inference_fps:.03f} ({self.total_frames} frames)")
@@ -238,10 +232,6 @@ class YOLOv8OVMS:
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             print(f"{timestamp} - {message}")
 
-    def print_average_inference_time(self):
-        average_inference_time = self.total_inference_time / self.total_frames
-        print(f"Average inference time: {average_inference_time:.03f} secs")
-    
     def __del__(self):
         print("Releasing resources...")
         self.cap.release()
