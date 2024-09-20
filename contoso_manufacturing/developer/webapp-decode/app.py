@@ -46,8 +46,8 @@ def init_yolo_detector():
         model_name="yolov8n", 
         ovms_url=ovms_url, 
         save_img_loc=False,
-        verbose=True,
-        skip_rate=0
+        verbose=False,
+        skip_rate=10
     )
 
 def init_yolo_safety_detector():
@@ -72,8 +72,8 @@ def init_yolo_safety_detector():
         model_name="safety-yolo8", 
         ovms_url=ovms_url, 
         save_img_loc=False,
-        verbose=True,
-        skip_rate=0
+        verbose=False,
+        skip_rate=2
     )
 
 def init_welding_detector():
@@ -179,17 +179,12 @@ def gen_frames(video_name):
               latest_choice_detector = init_pose_estimator()
 
     while video_name != "":
-        print(f"{time.time()} - Start processing frame")
         processed_frame = latest_choice_detector.run()
-        print(f"{time.time()} - End   processing frame")
-
         if processed_frame is not None:
-            print(f"{time.time()} - Start JPEG encoding")
             ret, buffer = cv2.imencode('.jpg', processed_frame)
             frame = buffer.tobytes()
             yield (b'--frame\r\n'
                 b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')            
-            print(f"{time.time()} - End   JPEG encoding")
 
 @app.route('/video_feed')
 def video_feed():
