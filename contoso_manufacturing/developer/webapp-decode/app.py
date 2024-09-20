@@ -7,7 +7,6 @@ from yolov8 import YOLOv8OVMS
 from welding import WeldPorosity
 from pose_estimator import PoseEstimator
 from bolt_detection import BoltDetection
-import time
 
 app = Flask(__name__)
 
@@ -184,7 +183,7 @@ def gen_frames(video_name):
             ret, buffer = cv2.imencode('.jpg', processed_frame)
             frame = buffer.tobytes()
             yield (b'--frame\r\n'
-                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')            
+                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 @app.route('/video_feed')
 def video_feed():
