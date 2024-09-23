@@ -69,9 +69,6 @@ class YOLOv8OVMS:
                 time.sleep(0.01)
             print("Adding postprocessed frame to postprocessed frames queue...")
 
-            self.total_frames += 1
-            total_fps = self.total_frames / (time.time() - self.start_time)
-            print("total fps is: ", total_fps)
             self.postprocessed_frames_queue.put(postprocessed_frame)        
   
     def preprocess(self, frame):
