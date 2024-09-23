@@ -179,9 +179,12 @@ def gen_frames(video_name):
               latest_choice_detector = init_pose_estimator()
 
     while video_name != "":
-        processed_frame = latest_choice_detector.run()
-        if processed_frame is not None:
-            ret, buffer = cv2.imencode('.jpg', processed_frame)
+        while latest_choice_detector.postprocessed_frames_queue.empty():
+            print("Waiting for postprocessed frames...")
+            time.sleep(0.1)
+        postprocessed_frame = latest_choice_detector.postprocessed_frames_queue.get()
+        if postprocessed_frame is not None:
+            ret, buffer = cv2.imencode('.jpg', postprocessed_frame)
             frame = buffer.tobytes()
             yield (b'--frame\r\n'
                 b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')

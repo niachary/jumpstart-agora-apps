@@ -27,9 +27,15 @@ class YOLOv8OVMS:
         self.grpc_client = make_grpc_client(ovms_url)
         self.stopped = False
         self.lock = threading.Lock()
-        self.frame_queue = queue.Queue(maxsize=150)
+        self.preprocessed_frames_queue = queue.Queue(maxsize=150)
+        self.inferenced_frames_queue = queue.Queue(maxsize=150)
+        self.postprocessed_frames_queue = queue.Queue(maxsize=150)
         self.capture_thread = threading.Thread(target=self.capture_frames)
         self.capture_thread.start()
+        self.postprocess_thread = threading.Thread(target=self.postprocess_frames)
+        self.postprocess_thread.start()
+        self.inference_thread = threading.Thread(target=self.run_inference)
+        self.inference_thread.start()
 
     def capture_frames(self):
         cap = cv2.VideoCapture(self.rtsp_url)
@@ -39,14 +45,29 @@ class YOLOv8OVMS:
                 self.log("Failed to grab frame")
                 print("Failed to grab frame")
                 break
-            while self.frame_queue.full():
-                self.log("Frame queue is full. Waiting for 10 ms...")
-                print("Frame queue is full. Waiting for 10 ms...")
-                # sleep for 10 ms to allow the main thread to process the frame
-                time.sleep(0.1)
-            self.frame_queue.put(frame)        
-                
+            
+            preprocessed_frame = self.preprocess(frame)
+            frame_tuple = (frame, preprocessed_frame)
+            if self.preprocessed_frames_queue.full():
+                self.log("Preprocessed frames queue is full. Waiting for 10 ms...")
+                print("Preprocessed frames queue is full. Waiting for 10 ms...")
+                time.sleep(0.01)
+            self.preprocessed_frames_queue.put(frame_tuple)
         cap.release()
+
+    def postprocess_frames(self):
+        while(self.inferenced_frames_queue.empty()):
+            self.log("Postprocess queue is empty. Waiting for 10 ms...")
+            print("Postprocess queue is empty. Waiting for 10 ms...")
+            time.sleep(0.01)
+        frame, outputs = self.inferenced_frames_queue.get()
+
+        postprocessed_frame = self.postprocess(frame, outputs)
+        while self.postprocessed_frames_queue.full():
+            self.log("Postprocessed frames queue is full. Waiting for 10 ms...")
+            print("Postprocessed frames queue is full. Waiting for 10 ms...")
+            time.sleep(0.01)
+        self.postprocessed_frames_queue.put(postprocessed_frame)        
   
     def preprocess(self, frame):
         if(self.verbose):
@@ -162,6 +183,20 @@ class YOLOv8OVMS:
 
          # Draw the label text on the image
         cv2.putText(img, label, (label_x, label_y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 0), 1, cv2.LINE_AA)
+
+    def run_inference(self):
+        while(self.preprocessed_frames_queue.empty()):
+            self.log("Preprocess queue is empty. Waiting for 10 ms...")
+            print("Preprocess queue is empty. Waiting for 10 ms...")
+            time.sleep(0.01)
+        frame, image_data = self.preprocessed_frames_queue.get()
+        outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
+        while(self.inferenced_frames_queue.full()):
+            self.log("Inference queue is full. Waiting for 10 ms...")
+            print("Inference queue is full. Waiting for 10 ms...")
+            time.sleep(0.01)
+        frame_tuple = (frame, outputs)
+        self.inferenced_frames_queue.put(frame_tuple)   
 
     def run(self):
         while not self.stopped:
