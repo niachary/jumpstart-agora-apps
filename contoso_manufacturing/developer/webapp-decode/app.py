@@ -182,31 +182,13 @@ def gen_frames(video_name):
         while latest_choice_detector.postprocessed_frames_queue.empty():
             print("Waiting for postprocessed frames...")
             time.sleep(0.1)
+        print("Rendering the frame...")
         postprocessed_frame = latest_choice_detector.postprocessed_frames_queue.get()
         if postprocessed_frame is not None:
             ret, buffer = cv2.imencode('.jpg', postprocessed_frame)
             frame = buffer.tobytes()
             yield (b'--frame\r\n'
                 b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-    # frame_num = 1
-    # processing_time = 0
-    # while video_name != "":
-    #     frame_num += 1
-    #     start_time = time.time()
-    #     processed_frame = latest_choice_detector.run()
-    #     end_time = time.time()
-    #     processing_time += end_time - start_time
-    #     #print(f"Time taken to process frame: {processing_time} seconds")
-    #     print("average processing time: ", processing_time/frame_num)
-    #     if processed_frame is not None:
-    #         ret, buffer = cv2.imencode('.jpg', processed_frame)
-    #         frame = buffer.tobytes()
-    #         display_start_time = time.time()
-    #         yield (b'--frame\r\n'
-    #             b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-    #         display_end_time = time.time()
-    #         display_time = display_end_time - display_start_time
-    #         print(f"Time taken to display frame: {display_time} seconds")
 
 @app.route('/video_feed')
 def video_feed():

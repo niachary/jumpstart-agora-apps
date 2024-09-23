@@ -36,6 +36,9 @@ class YOLOv8OVMS:
         self.postprocess_thread.start()
         self.inference_thread = threading.Thread(target=self.run_inference)
         self.inference_thread.start()
+        self.total_frames = 0
+        self.total_fps = 0
+        self.start_time = time.time()
 
     def capture_frames(self):
         cap = cv2.VideoCapture(self.rtsp_url)
@@ -49,25 +52,27 @@ class YOLOv8OVMS:
             preprocessed_frame = self.preprocess(frame)
             frame_tuple = (frame, preprocessed_frame)
             if self.preprocessed_frames_queue.full():
-                self.log("Preprocessed frames queue is full. Waiting for 10 ms...")
-                print("Preprocessed frames queue is full. Waiting for 10 ms...")
                 time.sleep(0.01)
+            print("Adding frame to preprocessed frames queue...")
             self.preprocessed_frames_queue.put(frame_tuple)
         cap.release()
 
     def postprocess_frames(self):
-        while(self.inferenced_frames_queue.empty()):
-            self.log("Postprocess queue is empty. Waiting for 10 ms...")
-            print("Postprocess queue is empty. Waiting for 10 ms...")
-            time.sleep(0.01)
-        frame, outputs = self.inferenced_frames_queue.get()
+        while not self.stopped:
+            while(self.inferenced_frames_queue.empty()):
+                time.sleep(0.01)
+            print("Postprocessing frames...")
+            frame, outputs = self.inferenced_frames_queue.get()
+            
+            postprocessed_frame = self.postprocess(frame, outputs)
+            while self.postprocessed_frames_queue.full():
+                time.sleep(0.01)
+            print("Adding postprocessed frame to postprocessed frames queue...")
 
-        postprocessed_frame = self.postprocess(frame, outputs)
-        while self.postprocessed_frames_queue.full():
-            self.log("Postprocessed frames queue is full. Waiting for 10 ms...")
-            print("Postprocessed frames queue is full. Waiting for 10 ms...")
-            time.sleep(0.01)
-        self.postprocessed_frames_queue.put(postprocessed_frame)        
+            self.total_frames += 1
+            total_fps = self.total_frames / (time.time() - self.start_time)
+            print("total fps is: ", total_fps)
+            self.postprocessed_frames_queue.put(postprocessed_frame)        
   
     def preprocess(self, frame):
         if(self.verbose):
@@ -185,18 +190,19 @@ class YOLOv8OVMS:
         cv2.putText(img, label, (label_x, label_y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 0), 1, cv2.LINE_AA)
 
     def run_inference(self):
-        while(self.preprocessed_frames_queue.empty()):
-            self.log("Preprocess queue is empty. Waiting for 10 ms...")
-            print("Preprocess queue is empty. Waiting for 10 ms...")
-            time.sleep(0.01)
-        frame, image_data = self.preprocessed_frames_queue.get()
-        outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
-        while(self.inferenced_frames_queue.full()):
-            self.log("Inference queue is full. Waiting for 10 ms...")
-            print("Inference queue is full. Waiting for 10 ms...")
-            time.sleep(0.01)
-        frame_tuple = (frame, outputs)
-        self.inferenced_frames_queue.put(frame_tuple)   
+        while not self.stopped:
+            while(self.preprocessed_frames_queue.empty()):
+                time.sleep(0.01)
+            
+            frame, image_data = self.preprocessed_frames_queue.get()
+            outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
+
+            while(self.inferenced_frames_queue.full()):
+                time.sleep(0.01)
+            
+            print("Adding frame and outputs to inferenced frames queue...")
+            frame_tuple = (frame, outputs)
+            self.inferenced_frames_queue.put(frame_tuple)   
 
     def run(self):
         while not self.stopped:
