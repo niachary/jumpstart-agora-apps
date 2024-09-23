@@ -27,7 +27,7 @@ class YOLOv8OVMS:
         self.grpc_client = make_grpc_client(ovms_url)
         self.stopped = False
         self.lock = threading.Lock()
-        self.frame_queue = queue.Queue(maxsize=50)
+        self.frame_queue = queue.Queue(maxsize=150)
         self.capture_thread = threading.Thread(target=self.capture_frames)
         self.capture_thread.start()
 
@@ -36,43 +36,22 @@ class YOLOv8OVMS:
         while not self.stopped:
             ret, frame = cap.read()
             if not ret:
+                self.log("Failed to grab frame")
                 print("Failed to grab frame")
                 break
-            if not self.frame_queue.full():
-                self.frame_queue.put(frame)
+            while self.frame_queue.full():
+                self.log("Frame queue is full. Waiting for 10 ms...")
+                print("Frame queue is full. Waiting for 10 ms...")
+                # sleep for 10 ms to allow the main thread to process the frame
+                time.sleep(0.1)
+            self.frame_queue.put(frame)        
+                
         cap.release()
-
-        #video_getter = VideoGet(src=rtsp_url).start()
-
-        #self.cap = cv2.VideoCapture(rtsp_url)
-        # while not video_getter.stopped:
-        #    video_getter.stop() 
-        #    print("Error: stopping video")
-        # else:
-        #     frame = video_getter.frame
-        #     if frame is not None:
-        #         self.img_height, self.img_width = frame.shape[:2]
-        #     else:
-        #         print("Failed to grab frame to set image dimensions")
-        
-        # if not self.cap.isOpened():
-        #     print("Error: Unable to open video source.")
-        # else:
-        #     # Lee un frame para determinar el tamaño de los frames del video
-        #     ret, frame = self.cap.read()
-        #     if ret:
-        #         self.img_height, self.img_width = frame.shape[:2]
-        #     else:
-        #         print("Failed to grab frame to set image dimensions")
   
     def preprocess(self, frame):
         if(self.verbose):
             print("Preprocessing the frame...")
 
-        # ret, img = self.cap.read()
-        # if not ret:
-        #     print("Failed to grab frame")
-        #     return None
         self.img_height, self.img_width = frame.shape[:2]  # Actualiza las dimensiones basadas en el frame actual
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         img = cv2.resize(img, (self.input_width, self.input_height))
@@ -208,12 +187,9 @@ class YOLOv8OVMS:
                 processed_frame = self.postprocess(frame, outputs)
 
                 return processed_frame
-        # image_data = self.preprocess()
-
-        # outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
-        # frame = self.postprocess(self.cap.read()[1], outputs)
-
-        # return frame
+            else:
+                print("Frame queue is empty. Waiting for 10 ms...")
+                time.sleep(0.01)
 
     def stop(self):
         with self.lock:
