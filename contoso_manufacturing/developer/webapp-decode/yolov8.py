@@ -36,8 +36,11 @@ class YOLOv8OVMS:
         self.postprocess_thread.start()
         self.inference_thread = threading.Thread(target=self.run_inference)
         self.inference_thread.start()
+        # Track frames and inference processing time for displaying FPS performance metrics 
+        self.total_inference_time = 0.0
+        self.inference_fps = 0.0
+        self.total_fps = 0.0
         self.total_frames = 0
-        self.total_fps = 0
         self.start_time = time.time()
 
     def capture_frames(self):
@@ -74,13 +77,6 @@ class YOLOv8OVMS:
     def preprocess(self, frame):
         if(self.verbose):
             print("Preprocessing the frame...")
-
-        # Track frames and inference processing time for displaying FPS performance metrics 
-        self.total_inference_time = 0.0
-        self.inference_fps = 0.0
-        self.total_fps = 0.0
-        self.total_frames = 0
-        self.start_time = time.time()
 
         self.img_height, self.img_width = frame.shape[:2]  # Actualiza las dimensiones basadas en el frame actual
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
