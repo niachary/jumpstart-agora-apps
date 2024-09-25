@@ -27,8 +27,11 @@ class YOLOv8OVMS:
         self.grpc_client = make_grpc_client(ovms_url)
         self.stopped = False
         self.lock = threading.Lock()
+        # captures the frames and preprocesses them
         self.preprocessed_frames_queue = queue.Queue(maxsize=150)
+        # captures the frames and outputs from the inference
         self.inferenced_frames_queue = queue.Queue(maxsize=150)
+        # postprocesses the frames
         self.postprocessed_frames_queue = queue.Queue(maxsize=150)
         self.capture_thread = threading.Thread(target=self.capture_frames)
         self.capture_thread.start()
