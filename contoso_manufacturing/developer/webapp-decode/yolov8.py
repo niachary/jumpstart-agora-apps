@@ -78,8 +78,7 @@ class YOLOv8OVMS:
             self.postprocessed_frames_queue.put(postprocessed_frame)        
   
     def preprocess(self, frame):
-        if(self.verbose):
-            self.log("Preprocessing the frame...")
+        self.log("Preprocessing the frame...")
 
         self.img_height, self.img_width = frame.shape[:2]  # Actualiza las dimensiones basadas en el frame actual
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
