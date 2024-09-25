@@ -257,6 +257,8 @@ class YOLOv8OVMS:
     def stop(self):
         self.stopped = True
         self.capture_thread.join()
+        self.postprocess_thread.join()
+        self.inference_thread.join()
     
     def log(self, message):
         """Logs a message with a timestamp if verbose is true."""
