@@ -262,7 +262,6 @@ class YOLOv8OVMS:
 
     def __del__(self):
         print("Releasing resources...")
-        #self.cap.release()
         self.stop()
         cv2.destroyAllWindows()
         print("Released video capture and destroyed all windows.")
