@@ -181,7 +181,7 @@ def gen_frames(video_name):
     while video_name != "":
         while latest_choice_detector.postprocessed_frames_queue.empty():
             print("Waiting for postprocessed frames...")
-            time.sleep(0.1)
+            time.sleep(0.005)
         print("Rendering the frame...")
         postprocessed_frame = latest_choice_detector.postprocessed_frames_queue.get()
         if postprocessed_frame is not None:
