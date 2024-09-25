@@ -48,15 +48,14 @@ class YOLOv8OVMS:
         while not self.stopped:
             ret, frame = cap.read()
             if not ret:
-                self.log("Failed to grab frame")
                 print("Failed to grab frame")
                 break
             
             preprocessed_frame = self.preprocess(frame)
             frame_tuple = (frame, preprocessed_frame)
-            if self.preprocessed_frames_queue.full():
+            while self.preprocessed_frames_queue.full():
                 time.sleep(0.01)
-            print("Adding frame to preprocessed frames queue...")
+            self.log("Adding frame to preprocessed frames queue...")
             self.preprocessed_frames_queue.put(frame_tuple)
         cap.release()
 
@@ -64,19 +63,19 @@ class YOLOv8OVMS:
         while not self.stopped:
             while(self.inferenced_frames_queue.empty()):
                 time.sleep(0.01)
-            print("Postprocessing frames...")
+            self.log("Postprocessing frames...")
             frame, outputs = self.inferenced_frames_queue.get()
             
             postprocessed_frame = self.postprocess(frame, outputs)
             while self.postprocessed_frames_queue.full():
                 time.sleep(0.01)
-            print("Adding postprocessed frame to postprocessed frames queue...")
+            self.log("Adding postprocessed frame to postprocessed frames queue...")
 
             self.postprocessed_frames_queue.put(postprocessed_frame)        
   
     def preprocess(self, frame):
         if(self.verbose):
-            print("Preprocessing the frame...")
+            self.log("Preprocessing the frame...")
 
         self.img_height, self.img_width = frame.shape[:2]  # Actualiza las dimensiones basadas en el frame actual
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -214,7 +213,7 @@ class YOLOv8OVMS:
             while(self.inferenced_frames_queue.full()):
                 time.sleep(0.01)
             
-            print("Adding frame and outputs to inferenced frames queue...")
+            self.log("Adding frame and outputs to inferenced frames queue...")
             frame_tuple = (frame, outputs)
             self.inferenced_frames_queue.put(frame_tuple)   
 
