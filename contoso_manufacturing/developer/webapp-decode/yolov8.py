@@ -251,8 +251,7 @@ class YOLOv8OVMS:
             label_y += (label_height + 2 * pixel_border)
 
     def stop(self):
-        with self.lock:
-            self.stopped = True
+        self.stopped = True
         self.capture_thread.join()
     
     def log(self, message):
