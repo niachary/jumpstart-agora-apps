@@ -178,17 +178,26 @@ def gen_frames(video_name):
         elif video_name == "human-pose-estimation":
               latest_choice_detector = init_pose_estimator()
 
-    while video_name != "":
-        while latest_choice_detector.postprocessed_frames_queue.empty():
-            print("Waiting for postprocessed frames...")
-            time.sleep(0.005)
-        print("Rendering the frame...")
-        postprocessed_frame = latest_choice_detector.postprocessed_frames_queue.get()
-        if postprocessed_frame is not None:
-            ret, buffer = cv2.imencode('.jpg', postprocessed_frame)
-            frame = buffer.tobytes()
-            yield (b'--frame\r\n'
-                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        if video_name == "yolov8n" or video_name == "safety-yolo8":
+            while video_name != "":
+                while latest_choice_detector.postprocessed_frames_queue.empty():
+                    print("Waiting for postprocessed frames...")
+                    time.sleep(0.005)
+                print("Rendering the frame...")
+                postprocessed_frame = latest_choice_detector.postprocessed_frames_queue.get()
+                if postprocessed_frame is not None:
+                    ret, buffer = cv2.imencode('.jpg', postprocessed_frame)
+                    frame = buffer.tobytes()
+                    yield (b'--frame\r\n'
+                        b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        else:
+            while video_name != "":
+                processed_frame = latest_choice_detector.run()
+                if processed_frame is not None:
+                    ret, buffer = cv2.imencode('.jpg', processed_frame)
+                    frame = buffer.tobytes()
+                    yield (b'--frame\r\n'
+                        b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 @app.route('/video_feed')
 def video_feed():
