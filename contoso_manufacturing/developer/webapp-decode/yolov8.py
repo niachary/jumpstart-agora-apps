@@ -58,8 +58,11 @@ class YOLOv8OVMS:
             frame_tuple = (frame, preprocessed_frame)
             while not self.stopped and self.preprocessed_frames_queue.full():
                 time.sleep(0.005)
-            self.log("Adding frame to preprocessed frames queue...")
-            self.preprocessed_frames_queue.put(frame_tuple)
+            
+            if not self.preprocessed_frames_queue.full():
+                self.log("Adding frame to preprocessed frames queue...")
+                self.preprocessed_frames_queue.put(frame_tuple)
+            
         cap.release()
 
     def postprocess_frames(self):
@@ -71,10 +74,12 @@ class YOLOv8OVMS:
             frame, outputs = self.inferenced_frames_queue.get()
             
             postprocessed_frame = self.postprocess(frame, outputs)
-            while not self.stopped and self.postprocessed_frames_queue.full():
+            while self.postprocessed_frames_queue.full():
                 time.sleep(0.005)
+                if self.stopped:
+                    return
+            
             self.log("Adding postprocessed frame to postprocessed frames queue...")
-
             self.postprocessed_frames_queue.put(postprocessed_frame)        
   
     def preprocess(self, frame):
@@ -214,8 +219,10 @@ class YOLOv8OVMS:
             self.total_fps = self.total_frames / (time.time() - self.start_time)    # This includes e.g. JPEG encoding in the parent method outside of self.run()
             self.log(f"FPS={self.total_fps} Inference={self.inference_fps:.03f} ({self.total_frames} frames)")
 
-            while(not self.stopped and self.inferenced_frames_queue.full()):
+            while self.inferenced_frames_queue.full():
                 time.sleep(0.005)
+                if self.stopped:
+                    return
             
             self.log("Adding frame and outputs to inferenced frames queue...")
             frame_tuple = (frame, outputs)
