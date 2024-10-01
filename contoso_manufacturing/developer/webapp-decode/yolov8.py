@@ -6,6 +6,8 @@ from ovmsclient import make_grpc_client
 from tabulate import tabulate
 import os
 import datetime
+import threading
+import queue
 
 class YOLOv8OVMS:
     def __init__(self, rtsp_url, class_names, input_shape, color_palette, confidence_thres, iou_thres, model_name, ovms_url, save_img_loc, skip_rate, verbose=False):
@@ -22,7 +24,21 @@ class YOLOv8OVMS:
         self.verbose=verbose
         self.frame_number =0
         self.skip_rate=skip_rate
-
+        self.grpc_client = make_grpc_client(ovms_url)
+        self.stopped = False
+        self.lock = threading.Lock()
+        # captures the frames and preprocesses them
+        self.preprocessed_frames_queue = queue.Queue(maxsize=150)
+        # captures the frames and outputs from the inference
+        self.inferenced_frames_queue = queue.Queue(maxsize=150)
+        # postprocesses the frames
+        self.postprocessed_frames_queue = queue.Queue(maxsize=150)
+        self.capture_thread = threading.Thread(target=self.capture_frames)
+        self.capture_thread.start()
+        self.postprocess_thread = threading.Thread(target=self.postprocess_frames)
+        self.postprocess_thread.start()
+        self.inference_thread = threading.Thread(target=self.run_inference)
+        self.inference_thread.start()
         # Track frames and inference processing time for displaying FPS performance metrics 
         self.total_inference_time = 0.0
         self.inference_fps = 0.0
@@ -30,29 +46,47 @@ class YOLOv8OVMS:
         self.total_frames = 0
         self.start_time = time.time()
 
-        self.cap = cv2.VideoCapture(rtsp_url)
-        self.grpc_client = make_grpc_client(ovms_url)
-        
-        if not self.cap.isOpened():
-            print("Error: Unable to open video source.")
-        else:
-            # Lee un frame para determinar el tamaño de los frames del video
-            ret, frame = self.cap.read()
-            if ret:
-                self.img_height, self.img_width = frame.shape[:2]
-                print(f"Image dimensions: {self.img_width}x{self.img_height}")
-            else:
-                print("Failed to grab frame to set image dimensions")
+    def capture_frames(self):
+        cap = cv2.VideoCapture(self.rtsp_url)
+        while not self.stopped:
+            ret, frame = cap.read()
+            if not ret:
+                print("Failed to grab frame")
+                break
+            
+            preprocessed_frame = self.preprocess(frame)
+            frame_tuple = (frame, preprocessed_frame)
+            while not self.stopped and self.preprocessed_frames_queue.full():
+                time.sleep(0.005)
+            
+            if not self.preprocessed_frames_queue.full():
+                self.log("Adding frame to preprocessed frames queue...")
+                self.preprocessed_frames_queue.put(frame_tuple)
+            
+        cap.release()
+
+    def postprocess_frames(self):
+        while not self.stopped:
+            if(self.inferenced_frames_queue.empty()):
+                time.sleep(0.005)
+                continue
+            self.log("Postprocessing frames...")
+            frame, outputs = self.inferenced_frames_queue.get()
+            
+            postprocessed_frame = self.postprocess(frame, outputs)
+            while self.postprocessed_frames_queue.full():
+                time.sleep(0.005)
+                if self.stopped:
+                    return
+            
+            self.log("Adding postprocessed frame to postprocessed frames queue...")
+            self.postprocessed_frames_queue.put(postprocessed_frame)        
   
-    def preprocess(self):
+    def preprocess(self, frame):
         self.log("Preprocessing the frame...")
 
-        ret, img = self.cap.read()
-        if not ret:
-            print("Failed to grab frame")
-            return None
-        self.img_height, self.img_width = img.shape[:2]  # Actualiza las dimensiones basadas en el frame actual
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        self.img_height, self.img_width = frame.shape[:2]  # Actualiza las dimensiones basadas en el frame actual
+        img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         img = cv2.resize(img, (self.input_width, self.input_height))
         image_data = np.array(img) / 255.0
         image_data = np.transpose(image_data, (2, 0, 1))
@@ -164,6 +198,36 @@ class YOLOv8OVMS:
          # Draw the label text on the image
         cv2.putText(img, label, (label_x, label_y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 0), 1, cv2.LINE_AA)
 
+    def run_inference(self):
+        while not self.stopped:
+            if(self.preprocessed_frames_queue.empty()):
+                time.sleep(0.005)
+                continue
+            
+            frame, image_data = self.preprocessed_frames_queue.get()
+            
+            # Perform inference on the preprocessed image; capture the start and end times
+            time1 = time.time()
+            outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
+            time2 = time.time()
+            # Update metrics used for FPS calculations
+            self.total_inference_time += (time2 - time1)
+            self.total_frames += 1
+
+            # Calculate FPS for both the inferencing step and the final feed  
+            self.inference_fps = self.total_frames / self.total_inference_time
+            self.total_fps = self.total_frames / (time.time() - self.start_time)    # This includes e.g. JPEG encoding in the parent method outside of self.run()
+            self.log(f"FPS={self.total_fps} Inference={self.inference_fps:.03f} ({self.total_frames} frames)")
+
+            while self.inferenced_frames_queue.full():
+                time.sleep(0.005)
+                if self.stopped:
+                    return
+            
+            self.log("Adding frame and outputs to inferenced frames queue...")
+            frame_tuple = (frame, outputs)
+            self.inferenced_frames_queue.put(frame_tuple)   
+
     def draw_fps(self, img):
 
         # Create an array of strings - one for each line of text to display on the image
@@ -197,35 +261,12 @@ class YOLOv8OVMS:
             cv2.putText(img, label, (label_x, label_y + label_height), font_face, font_scale, font_color, font_thickness, cv2.LINE_AA)
             label_y += (label_height + 2 * pixel_border)
 
-    def run(self):
-        self.log("Running detection...")
-
-        self.frame_number += 1
-        # If mod = 0, i will get the frame and skip it
-        if ((self.skip_rate > 0) and (self.frame_number % self.skip_rate == 0)):
-            self.cap.read()
-            return None
-        
-        # Pre-process the image
-        # Perform inference on the preprocessed image; capture the start and end times
-        # Post-processing including drawing bounding boxes
-        image_data = self.preprocess()
-        time1 = time.time()
-        outputs = self.grpc_client.predict({"images": image_data}, self.model_name)
-        time2 = time.time()
-        frame = self.postprocess(self.cap.read()[1], outputs)
-
-        # Update metrics used for FPS calculations
-        self.total_inference_time += (time2 - time1)
-        self.total_frames += 1
-
-        # Calculate FPS for both the inferencing step and the final feed  
-        self.inference_fps = self.total_frames / self.total_inference_time
-        self.total_fps = self.total_frames / (time.time() - self.start_time)    # This includes e.g. JPEG encoding in the parent method outside of self.run()
-        self.log(f"FPS={self.total_fps} Inference={self.inference_fps:.03f} ({self.total_frames} frames)")
-
-        return frame
-
+    def stop(self):
+        self.stopped = True
+        self.capture_thread.join()
+        self.postprocess_thread.join()
+        self.inference_thread.join()
+    
     def log(self, message):
         """Logs a message with a timestamp if verbose is true."""
         if self.verbose:
@@ -234,6 +275,7 @@ class YOLOv8OVMS:
 
     def __del__(self):
         print("Releasing resources...")
-        self.cap.release()
+        self.stop()
         cv2.destroyAllWindows()
         print("Released video capture and destroyed all windows.")
+    
